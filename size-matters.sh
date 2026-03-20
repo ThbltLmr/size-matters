@@ -61,6 +61,39 @@ size-matters() {
         done
     }
 
+    _sm_print_commit_list() {
+        local range="$1"
+        local output
+        output=$(git -C "$repo_root" log "$range" --format="%h %s" --shortstat 2>/dev/null)
+        if [[ -z "$output" ]]; then
+            echo "  No commits"
+            return
+        fi
+        echo "$output" | awk '
+            /^[a-f0-9]+ / {
+                if (hash != "") {
+                    printf "  %s %-50s %d files, +%d, -%d\n", hash, msg, files, adds, dels
+                }
+                hash = $1
+                msg = substr($0, length($1) + 2)
+                files = 0; adds = 0; dels = 0
+                next
+            }
+            /file.*changed/ {
+                for (i = 1; i <= NF; i++) {
+                    if ($(i+1) ~ /file/) files = $i + 0
+                    if ($i ~ /insertion/) adds = $(i-1) + 0
+                    if ($i ~ /deletion/) dels = $(i-1) + 0
+                }
+            }
+            END {
+                if (hash != "") {
+                    printf "  %s %-50s %d files, +%d, -%d\n", hash, msg, files, adds, dels
+                }
+            }
+        '
+    }
+
     echo "Uncommitted changes:"
     {
         if git -C "$repo_root" rev-parse HEAD &>/dev/null 2>&1; then
@@ -71,10 +104,19 @@ size-matters() {
         _sm_get_untracked_numstat
     } | _sm_print_stats
 
-    echo ""
-    echo "Changes since last merge commit:"
     local merge_commit
     merge_commit=$(git -C "$repo_root" log --merges -1 --format=%H 2>/dev/null || true)
+
+    echo ""
+    echo "Commits since last merge:"
+    if [[ -z "$merge_commit" ]]; then
+        echo "  No merge commit found"
+    else
+        _sm_print_commit_list "$merge_commit..HEAD"
+    fi
+
+    echo ""
+    echo "Changes since last merge commit:"
     if [[ -z "$merge_commit" ]]; then
         echo "  No merge commit found"
     else
