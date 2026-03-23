@@ -24,6 +24,10 @@ size-matters() {
 
                 n = split(file, parts, "/")
                 base = parts[n]
+                if (match(base, /=> /)) {
+                    base = substr(base, RSTART + 3)
+                    gsub(/}/, "", base)
+                }
                 ext = "(no ext)"
                 if (match(base, /\.[^.]+$/))
                     ext = substr(base, RSTART)
