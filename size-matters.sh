@@ -29,7 +29,7 @@ size-matters() {
                     ext = substr(base, RSTART)
 
                 is_test = 0
-                if (match(base, /\.test\.[^.]+$/) || match(base, /\.spec\.[^.]+$/))
+                if (match(base, /[._-]test\.[^.]+$/) || match(base, /[._-]spec\.[^.]+$/))
                     is_test = 1
 
                 ea[ext] += added
