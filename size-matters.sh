@@ -28,12 +28,22 @@ size-matters() {
                 if (match(base, /\.[^.]+$/))
                     ext = substr(base, RSTART)
 
+                is_test = 0
+                if (match(base, /\.test\.[^.]+$/) || match(base, /\.spec\.[^.]+$/))
+                    is_test = 1
+
                 ea[ext] += added
                 er[ext] += removed
                 ef[ext]++
                 ta += added
                 tr += removed
                 tf++
+
+                if (is_test) {
+                    test_added += added
+                    test_removed += removed
+                    test_files++
+                }
             }
             END {
                 if (tf == 0) {
@@ -43,12 +53,24 @@ size-matters() {
                 printf "  Total: %d files changed, %d additions, %d deletions\n", tf, ta, tr
                 for (ext in ef)
                     printf "  %s: %d files changed, %d additions, %d deletions\n", ext, ef[ext], ea[ext], er[ext]
+                if (test_files > 0)
+                    printf "TESTSUBTOTAL  Tests (.test.*/.spec.*): %d files changed, %d additions, %d deletions\n", test_files, test_added, test_removed
             }
         ' | {
             IFS= read -r first_line
             echo "$first_line"
             if [[ "$first_line" != *"No changes"* ]]; then
-                sort -t: -k2 -rn
+                lines=()
+                test_line=""
+                while IFS= read -r line; do
+                    if [[ "$line" == TESTSUBTOTAL* ]]; then
+                        test_line="${line#TESTSUBTOTAL}"
+                    else
+                        lines+=("$line")
+                    fi
+                done
+                printf '%s\n' "${lines[@]}" | sort -t: -k2 -rn
+                [[ -n "$test_line" ]] && echo "$test_line"
             fi
         }
     }
